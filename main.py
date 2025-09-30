@@ -8,6 +8,11 @@ from bs4 import BeautifulSoup
 import uvicorn
 import os
 import html
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -29,6 +34,17 @@ class URLRequest(BaseModel):
 class ContentUpdate(BaseModel):
     original_content: str
     edited_content: str
+
+class WeChatDraftRequest(BaseModel):
+    access_token: str
+    title: str = "默认标题"
+    content: str
+    author: str = ""
+    digest: str = ""
+    content_source_url: str = ""
+    thumb_media_id: str = ""
+    need_open_comment: int = 1
+    only_fans_can_comment: int = 1
 
 @app.get("/")
 async def read_root():
@@ -129,6 +145,83 @@ async def process_content(update: ContentUpdate):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing content: {str(e)}")
+
+@app.post("/send-to-wechat-draft")
+async def send_to_wechat_draft(request: WeChatDraftRequest):
+    """
+    发送内容到微信草稿箱
+    根据微信官方文档：https://developers.weixin.qq.com/doc/service/api/draftbox/draftmanage/api_draft_add.html
+    """
+    logger.info("Received request to /send-to-wechat-draft")
+    logger.info(f"Received draft request data: {request.dict()}")
+    
+    access_token = request.access_token
+    title = request.title
+    content = request.content
+    author = request.author
+    digest = request.digest
+    content_source_url = request.content_source_url
+    thumb_media_id = request.thumb_media_id
+    need_open_comment = request.need_open_comment
+    only_fans_can_comment = request.only_fans_can_comment
+
+    if not access_token:
+        raise HTTPException(status_code=400, detail="缺少access_token")
+    
+    if not content:
+        raise HTTPException(status_code=400, detail="缺少内容")
+
+    # 构造微信API请求
+    url = f'https://api.weixin.qq.com/cgi-bin/draft/add?access_token={access_token}'
+    
+    # 构造文章内容
+    article = {
+        'title': title,
+        'author': author,
+        'digest': digest,
+        'content': content,
+        'content_source_url': content_source_url,
+        'need_open_comment': need_open_comment,
+        'only_fans_can_comment': only_fans_can_comment
+    }
+    
+    # 只有当thumb_media_id不为空时才添加
+    if thumb_media_id and thumb_media_id.strip() != '':
+        article['thumb_media_id'] = thumb_media_id
+        logger.info(f"Adding thumb_media_id: {thumb_media_id}")
+    else:
+        logger.info("No thumb_media_id provided")
+    
+    articles = {
+        'articles': [article]
+    }
+    
+    logger.info(f"Sending article to WeChat: {articles}")
+    
+    try:
+        logger.info(f"Sending request to WeChat API: {url}")
+        logger.info(f"Request data: {articles}")
+        response = requests.post(url, json=articles, timeout=10)
+        logger.info(f"WeChat API response status: {response.status_code}")
+        result = response.json()
+        logger.info(f"WeChat API response data: {result}")
+        
+        if 'errcode' in result and result['errcode'] != 0:
+            logger.info(f"WeChat API returned error: {result}")
+            raise HTTPException(status_code=400, detail=f"微信API错误: {result}")
+        
+        logger.info("Successfully sent to WeChat draft")
+        return {
+            "success": True,
+            "message": "内容已成功发送到微信草稿箱",
+            "data": result
+        }
+    except requests.RequestException as e:
+        logger.error(f"RequestException occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"请求微信API失败: {str(e)}")
+    except Exception as e:
+        logger.error(f"Exception occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"请求微信API失败: {str(e)}")
 
 def preserve_structure(original, edited):
     """

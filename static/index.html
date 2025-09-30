@@ -271,8 +271,8 @@
 
         <div class="actions">
             <button class="action-btn reset-btn" id="resetBtn">Reset</button>
-            <button class="action-btn save-btn" id="saveBtn">Save Changes</button>
-            <button class="action-btn export-btn" id="exportBtn">Export HTML</button>
+            <button class="action-btn save-btn" id="saveBtn">Send to Wechat Draft Box</button>
+            <button class="action-btn export-btn" id="exportBtn">Copy to Clipboard</button>
         </div>
     </div>
 
@@ -381,41 +381,56 @@
             }
         }
 
-        // Save changes
+        // Send to WeChat Draft Box
         async function saveChanges() {
             const editedContent = editableContent.innerHTML;
+            const title = currentTitle || 'WeChat Article';
+            
+            // Prompt user for access token
+            const accessToken = prompt("请输入微信access_token:");
+            if (!accessToken) {
+                alert("需要access_token才能发送到微信草稿箱");
+                return;
+            }
 
             try {
-                const response = await fetch(`${API_BASE}/process-content`, {
+                const response = await fetch(`${API_BASE}/send-to-wechat-draft`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        original_content: originalContent,
-                        edited_content: editedContent
+                        access_token: accessToken,
+                        title: title,
+                        content: editedContent,
+                        author: "",  // Optional: Add author field
+                        digest: "",  // Optional: Add digest field
+                        content_source_url: "",  // Optional: Add source URL field
+                        thumb_media_id: "",  // Optional: Add thumbnail media ID field
+                        need_open_comment: 1,  // Optional: Enable comments by default
+                        only_fans_can_comment: 1  // Optional: Only fans can comment by default
                     })
                 });
 
                 const data = await response.json();
 
                 if (!data.success) {
-                    throw new Error(data.detail || 'Failed to save content');
+                    throw new Error(data.detail || 'Failed to send content to WeChat draft box');
                 }
 
-                alert('Changes saved successfully!');
+                alert('Content sent to WeChat draft box successfully!');
             } catch (error) {
-                console.error('Error saving changes:', error);
-                alert(`Error saving changes: ${error.message}`);
+                console.error('Error sending to WeChat draft box:', error);
+                alert(`Error sending to WeChat draft box: ${error.message}`);
             }
         }
 
-        // Export as HTML file
+        // Copy to Clipboard as Rich Text
         function exportHTML() {
             const editedContent = editableContent.innerHTML;
             const title = currentTitle || 'WeChat Article';
             
-            // Create a complete HTML document
+            // Create a complete HTML document for clipboard
             const htmlContent = `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -478,21 +493,56 @@
 </html>
             `.trim();
             
-            // Create a blob and download link
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
+            // Try to copy as rich text using Clipboard API (modern browsers)
+            if (navigator.clipboard && window.ClipboardItem) {
+                // Create a Blob with the HTML content
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                
+                // Create a ClipboardItem with the HTML content
+                const clipboardItem = new ClipboardItem({ 'text/html': blob });
+                
+                // Write to clipboard
+                navigator.clipboard.write([clipboardItem]).then(() => {
+                    alert('Content copied to clipboard as rich text!');
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    // Fallback to plain text copy
+                    fallbackCopyTextToClipboard(editedContent);
+                });
+            } else {
+                // Fallback for older browsers or Debian compatibility
+                fallbackCopyTextToClipboard(editedContent);
+            }
+        }
+        
+        // Fallback function for copying text to clipboard
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
             
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${title}.html`;
-            document.body.appendChild(a);
-            a.click();
+            // Avoid scrolling to bottom
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
             
-            // Clean up
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 100);
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert('Content copied to clipboard!');
+                } else {
+                    alert('Failed to copy content to clipboard.');
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Failed to copy content to clipboard. Please try manually selecting and copying the content.');
+            }
+            
+            document.body.removeChild(textArea);
         }
 
         // Event listeners
