@@ -40,6 +40,16 @@
             padding: 8px 12px;
             font-size: 14px;
         }
+        
+        #clearCredsBtn {
+            background-color: #ff4d4f;
+            color: white;
+            border: none;
+        }
+        
+        #clearCredsBtn:hover {
+            background-color: #f5222d;
+        }
 
         .container {
             display: flex;
@@ -52,7 +62,7 @@
         .url-input-container {
             display: flex;
             gap: 10px;
-            padding: 20px;
+            padding: 12px 16px;
             background: white;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -60,14 +70,14 @@
 
         .url-input {
             flex: 1;
-            padding: 12px 16px;
+            padding: 8px 12px;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             font-size: 16px;
         }
 
         .load-btn {
-            padding: 12px 24px;
+            padding: 8px 16px;
             background-color: #07c160;
             color: white;
             border: none;
@@ -266,7 +276,8 @@
             <div class="header-actions">
                 <button class="action-btn reset-btn" id="resetBtn" style="margin-right: 10px;">Reset</button>
                 <button class="action-btn save-btn" id="saveBtn" style="margin-right: 10px;">Send to Wechat Draft Box</button>
-                <button class="action-btn export-btn" id="exportBtn">Copy to Clipboard</button>
+                <button class="action-btn export-btn" id="exportBtn" style="margin-right: 10px;">Copy to Clipboard</button>
+                <button class="action-btn reset-btn" id="clearCredsBtn" style="padding: 6px 10px; font-size: 12px;">Clear Credentials</button>
             </div>
         </div>
     </div>
@@ -413,14 +424,81 @@
             const editedContent = editableContent.innerHTML;
             const title = currentTitle || 'WeChat Article';
             
-            // Prompt user for access token
-            const accessToken = prompt("请输入微信access_token:");
-            if (!accessToken) {
-                alert("需要access_token才能发送到微信草稿箱");
-                return;
+            // Step 1: Get credentials
+            // Try to get saved credentials from localStorage
+            let appid = localStorage.getItem('wechat_appid');
+            let secret = localStorage.getItem('wechat_secret');
+            
+            // If no saved credentials, prompt user for appid and secret
+            if (!appid || !secret) {
+                appid = prompt("【步骤1/3】请输入微信appid:");
+                if (!appid) {
+                    alert("需要appid才能发送到微信草稿箱");
+                    return;
+                }
+                
+                secret = prompt("【步骤2/3】请输入微信secret:");
+                if (!secret) {
+                    alert("需要secret才能发送到微信草稿箱");
+                    return;
+                }
+                
+                // Ask user if they want to save credentials
+                if (confirm("是否保存凭据以便下次使用?")) {
+                    localStorage.setItem('wechat_appid', appid);
+                    localStorage.setItem('wechat_secret', secret);
+                }
             }
 
+            // Step 2: Get thumbnail media ID (compulsory)
+            let thumbMediaId = "";
+            do {
+                const userThumbMediaId = prompt("【步骤3/3】请输入封面图片media_id (必填):", "");
+                if (userThumbMediaId === null) {
+                    // User cancelled the prompt
+                    if (!confirm("确定要取消发送到微信草稿箱吗?")) {
+                        continue; // Ask again
+                    } else {
+                        return; // Exit the function
+                    }
+                } else if (userThumbMediaId.trim() === "") {
+                    alert("封面图片media_id不能为空，请重新输入!");
+                    continue; // Ask again
+                } else {
+                    thumbMediaId = userThumbMediaId.trim();
+                    break; // Valid input, exit loop
+                }
+            } while (true);
+
+            // Step 3: Process and send to WeChat
             try {
+                // Get access token using appid and secret
+                const tokenResponse = await fetch(`${API_BASE}/wechat/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appid: appid,
+                        secret: secret
+                    })
+                });
+
+                const tokenData = await tokenResponse.json();
+                
+                // Check token response status
+                if (!tokenResponse.ok) {
+                    // Handle error responses
+                    if (tokenData.errcode !== undefined && tokenData.errcode !== 0) {
+                        throw new Error(`WeChat API Error ${tokenData.errcode}: ${tokenData.errmsg}`);
+                    } else {
+                        throw new Error(tokenData.detail || '获取access_token失败');
+                    }
+                }
+
+                const accessToken = tokenData.access_token;
+
+                // Now send to WeChat draft box
                 const response = await fetch(`${API_BASE}/send-to-wechat-draft`, {
                     method: 'POST',
                     headers: {
@@ -433,7 +511,7 @@
                         author: "",  // Optional: Add author field
                         digest: "",  // Optional: Add digest field
                         content_source_url: "",  // Optional: Add source URL field
-                        thumb_media_id: "",  // Optional: Add thumbnail media ID field
+                        thumb_media_id: thumbMediaId,  // Use the provided or empty media ID
                         need_open_comment: 1,  // Optional: Enable comments by default
                         only_fans_can_comment: 1  // Optional: Only fans can comment by default
                     })
@@ -441,14 +519,43 @@
 
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.detail || 'Failed to send content to WeChat draft box');
+                // Check response status
+                if (!response.ok) {
+                    // Handle error responses
+                    if (data.errcode !== undefined && data.errcode !== 0) {
+                        throw new Error(`WeChat API Error ${data.errcode}: ${data.errmsg}`);
+                    } else {
+                        throw new Error(data.detail || 'Failed to send content to WeChat draft box');
+                    }
                 }
 
-                alert('Content sent to WeChat draft box successfully!');
+                // Handle success responses
+                if (data.success !== undefined) {
+                    // Our success response format
+                    alert('Content sent to WeChat draft box successfully!');
+                } else if (data.errcode !== undefined) {
+                    // Check if it's a WeChat success response (errcode: 0)
+                    if (data.errcode === 0) {
+                        alert('Content sent to WeChat draft box successfully!');
+                    } else {
+                        // This shouldn't happen for successful responses, but handle just in case
+                        throw new Error(`WeChat API Error ${data.errcode}: ${data.errmsg}`);
+                    }
+                } else {
+                    // Assume it's a successful response if no error indicators
+                    alert('Content sent to WeChat draft box successfully!');
+                }
             } catch (error) {
                 console.error('Error sending to WeChat draft box:', error);
                 alert(`Error sending to WeChat draft box: ${error.message}`);
+                
+                // Clear saved credentials if there's an authentication error
+                if (error.message.includes('appid') || error.message.includes('secret') || error.message.includes('access_token')) {
+                    if (confirm("凭据可能已失效，是否清除已保存的凭据?")) {
+                        localStorage.removeItem('wechat_appid');
+                        localStorage.removeItem('wechat_secret');
+                    }
+                }
             }
         }
 
@@ -572,11 +679,21 @@
             document.body.removeChild(textArea);
         }
 
+        // Clear saved WeChat credentials
+        function clearCredentials() {
+            if (confirm("确定要清除保存的微信凭据吗?")) {
+                localStorage.removeItem('wechat_appid');
+                localStorage.removeItem('wechat_secret');
+                alert("微信凭据已清除");
+            }
+        }
+
         // Event listeners
         loadBtn.addEventListener('click', loadArticle);
         resetBtn.addEventListener('click', resetContent);
         saveBtn.addEventListener('click', saveChanges);
         exportBtn.addEventListener('click', exportHTML);
+        document.getElementById('clearCredsBtn').addEventListener('click', clearCredentials);
 
         // Allow Enter key to load article
         urlInput.addEventListener('keypress', (e) => {

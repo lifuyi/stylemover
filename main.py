@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import requests
 import re
@@ -46,12 +47,29 @@ class WeChatDraftRequest(BaseModel):
     need_open_comment: int = 1
     only_fans_can_comment: int = 1
 
+class WeChatTokenRequest(BaseModel):
+    appid: str
+    secret: str
+
 @app.get("/")
 async def read_root():
     return {"message": "WeChat Article Style Converter API"}
 
 @app.post("/fetch-content")
 async def fetch_content(request: URLRequest):
+    # Validate and correct URL format before processing
+    corrected_url = request.url
+    if not corrected_url.startswith(("http://", "https://", "file://")):
+        # If no scheme is provided, default to https:// for URLs that look like domains
+        if "://" not in corrected_url and "." in corrected_url:
+            corrected_url = "https://" + corrected_url
+            logger.info(f"Corrected URL from '{request.url}' to '{corrected_url}'")
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid URL '{request.url}': No scheme supplied. Perhaps you meant https://{request.url}?")
+    
+    # Update the request with the corrected URL
+    request.url = corrected_url
+    
     try:
         # For local testing, we'll handle file:// URLs differently
         if request.url.startswith("file://"):
@@ -81,6 +99,7 @@ async def fetch_content(request: URLRequest):
             
             response = requests.get(request.url, headers=headers, timeout=10)
             response.raise_for_status()
+            content = response.text
             content = response.text
         
         # Parse the HTML content
@@ -152,9 +171,7 @@ async def send_to_wechat_draft(request: WeChatDraftRequest):
     发送内容到微信草稿箱
     根据微信官方文档：https://developers.weixin.qq.com/doc/service/api/draftbox/draftmanage/api_draft_add.html
     """
-    logger.info("Received request to /send-to-wechat-draft")
-    logger.info(f"Received draft request data: {request.dict()}")
-    
+    logger.info("Sending to WeChat draft")
     access_token = request.access_token
     title = request.title
     content = request.content
@@ -170,16 +187,28 @@ async def send_to_wechat_draft(request: WeChatDraftRequest):
     
     if not content:
         raise HTTPException(status_code=400, detail="缺少内容")
+        
+    if not thumb_media_id or thumb_media_id.strip() == "":
+        raise HTTPException(status_code=400, detail="缺少封面图片media_id")
 
     # 构造微信API请求
     url = f'https://api.weixin.qq.com/cgi-bin/draft/add?access_token={access_token}'
     
+    # 处理Unicode编码问题
+    try:
+        encoded_title = title.encode('utf-8').decode('latin-1') if isinstance(title, str) else title
+        encoded_content = content.encode('utf-8').decode('latin-1') if isinstance(content, str) else content
+    except Exception as e:
+        logger.warning(f"Unicode encoding warning: {str(e)}")
+        encoded_title = title
+        encoded_content = content
+    
     # 构造文章内容
     article = {
-        'title': title,
+        'title': encoded_title,
         'author': author,
         'digest': digest,
-        'content': content,
+        'content': encoded_content,
         'content_source_url': content_source_url,
         'need_open_comment': need_open_comment,
         'only_fans_can_comment': only_fans_can_comment
@@ -208,7 +237,10 @@ async def send_to_wechat_draft(request: WeChatDraftRequest):
         
         if 'errcode' in result and result['errcode'] != 0:
             logger.info(f"WeChat API returned error: {result}")
-            raise HTTPException(status_code=400, detail=f"微信API错误: {result}")
+            return JSONResponse(
+                status_code=400,
+                content={"errcode": result['errcode'], "errmsg": result['errmsg']}
+            )
         
         logger.info("Successfully sent to WeChat draft")
         return {
@@ -217,11 +249,70 @@ async def send_to_wechat_draft(request: WeChatDraftRequest):
             "data": result
         }
     except requests.RequestException as e:
-        logger.error(f"RequestException occurred: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"请求微信API失败: {str(e)}")
+        error_msg = str(e) if str(e) else "网络请求失败或超时"
+        logger.error(f"RequestException occurred: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"请求微信API失败: {error_msg}")
     except Exception as e:
-        logger.error(f"Exception occurred: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"请求微信API失败: {str(e)}")
+        error_msg = str(e) if str(e) else "未知错误"
+        logger.error(f"Exception occurred: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"请求微信API失败: {error_msg}")
+
+@app.post("/wechat/token")
+async def get_wechat_token(request: WeChatTokenRequest):
+    """
+    Exchange app ID and secret for access token
+    """
+    appid = request.appid
+    secret = request.secret
+    
+    logger.info(f"Received request with appid: {appid}, secret: {'*' * len(secret) if secret else None}")
+    
+    if not appid:
+        logger.info("Missing appid")
+        raise HTTPException(status_code=400, detail="缺少appid")
+    
+    if not secret:
+        logger.info("Missing secret")
+        raise HTTPException(status_code=400, detail="缺少secret")
+
+    # Construct WeChat API request
+    url = f'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={appid}&secret={secret}'
+    logger.info(f"Requesting WeChat API: {url}")
+    
+    try:
+        logger.info("About to make request to WeChat API")
+        response = requests.get(url, timeout=10)
+        logger.info(f"WeChat API response status: {response.status_code}")
+        logger.info(f"WeChat API response headers: {dict(response.headers)}")
+        result = response.json()
+        logger.info(f"WeChat API response data: {result}")
+        
+        # Check if WeChat API returned an error
+        if 'errcode' in result and result['errcode'] != 0:
+            logger.info(f"WeChat API returned error: {result}")
+            return JSONResponse(
+                status_code=400,
+                content={"errcode": result['errcode'], "errmsg": result['errmsg']}
+            )
+        
+        logger.info("Successfully obtained access_token")
+        return result
+    except requests.RequestException as e:
+        error_msg = str(e) if str(e) else f"网络请求失败或超时 (URL: {url})"
+        logger.error(f"RequestException occurred: {error_msg}")
+        logger.error(f"RequestException type: {type(e)}")
+        if hasattr(e, 'response') and e.response is not None:
+            logger.error(f"Response status code: {e.response.status_code}")
+            logger.error(f"Response headers: {dict(e.response.headers)}")
+            logger.error(f"Response text: {e.response.text}")
+        raise HTTPException(status_code=500, detail=f"请求微信API失败: {error_msg}")
+    except Exception as e:
+        error_msg = str(e) if str(e) else "未知错误"
+        logger.error(f"Exception occurred: {error_msg}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Exception traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"请求微信API失败: {error_msg}")
 
 def preserve_structure(original, edited):
     """

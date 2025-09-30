@@ -16,9 +16,6 @@ stylemover/
 ├── test_article.html    # Test HTML file
 ├── static/
 │   └── index.html       # Frontend interface
-├── app/
-│   ├── static/          # Empty directory (unused)
-│   └── templates/       # Empty directory (unused)
 └── .venv/               # Virtual environment (created on first run)
 ```
 
