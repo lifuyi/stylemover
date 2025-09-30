@@ -78,34 +78,15 @@
             padding-right: 30px; /* Space for clear button */
         }
 
-        .clear-url-btn {
-            position: absolute;
-            right: 110px; /* Position next to load button */
-            top: 50%;
-            transform: translateY(-50%);
-            background: #f5f5f5;
-            border: 1px solid #e0e0e0;
-            font-size: 14px;
+        /* Style the native search cancel button */
+        input[type="search"]::-webkit-search-cancel-button {
+            -webkit-appearance: searchfield-cancel-button;
             cursor: pointer;
-            color: #666;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px; /* Apple-style rounded corners */
-            box-shadow: 0 1px 1px rgba(0,0,0,0.05); /* Subtle shadow */
         }
 
-        .clear-url-btn:hover {
-            background-color: #e0e0e0;
-            color: #333;
-            border-color: #ccc;
-        }
-
-        .clear-url-btn:active {
-            background-color: #d0d0d0;
-            transform: translateY(-50%); /* Maintain position on click */
+        /* Additional styling for better visibility */
+        input[type="search"]::-webkit-search-cancel-button:hover {
+            opacity: 0.8;
         }
 
         .load-btn {
@@ -476,8 +457,7 @@
 
     <div class="container">
         <div class="url-input-container">
-            <input type="url" class="url-input" id="urlInput" placeholder="Enter WeChat article URL..." />
-            <button class="clear-url-btn" id="clearUrlBtn" title="Clear URL">✕</button>
+            <input type="search" class="url-input" id="urlInput" placeholder="Enter WeChat article URL..." />
             <button class="load-btn" id="loadBtn">Load Article</button>
         </div>
 
@@ -1005,12 +985,6 @@
             }
         }
 
-        // Clear URL input
-        function clearUrl() {
-            urlInput.value = '';
-            urlInput.focus();
-        }
-
         // Rich Text Editor Functions
         function formatText(command, value = null) {
             // Focus on the editable content first
@@ -1245,7 +1219,6 @@
         saveBtn.addEventListener('click', saveChanges);
         exportBtn.addEventListener('click', exportHTML);
         document.getElementById('clearCredsBtn').addEventListener('click', clearCredentials);
-        document.getElementById('clearUrlBtn').addEventListener('click', clearUrl);
 
         // Allow Enter key to load article
         urlInput.addEventListener('keypress', (e) => {
