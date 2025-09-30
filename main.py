@@ -127,6 +127,10 @@ async def fetch_content(request: URLRequest):
             content_html = content_html.replace('visibility: hidden;', 'visibility: visible;')
             content_html = content_html.replace('opacity: 0;', 'opacity: 1;')
             content_html = content_html.replace('display: none;', 'display: block;')
+            
+            # Remove problematic hardcoded styling that conflicts with frontend JavaScript
+            # The frontend JavaScript will handle all blockquote, code, and pre styling consistently
+            # This ensures both panes (readonly and editable) have identical styling
         else:
             content_html = "<p>Content could not be extracted properly.</p>"
             

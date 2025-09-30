@@ -128,7 +128,7 @@
         .readonly-content {
             pointer-events: none;
             user-select: none;
-            background-color: #f9f9f9;
+            /* Removed background-color to preserve original WeChat styling */
         }
 
         .editable-content {
@@ -228,6 +228,64 @@
 
         .wechat-content em {
             font-style: italic;
+        }
+
+        /* Styles for boxed/quoted text */
+        .wechat-content blockquote, .readonly-content blockquote {
+            margin: 0 0 16px 0;
+            padding: 16px;
+            border-left: 4px solid #07c160;
+            background-color: #f9f9f9;
+            color: #666;
+        }
+
+        .wechat-content code, .readonly-content code {
+            font-family: 'Courier New', Consolas, Monaco, monospace;
+            background-color: #f5f5f5;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 15px;
+        }
+
+        .wechat-content pre, .readonly-content pre {
+            background-color: #f5f5f5;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 0 0 16px 0;
+        }
+
+        .wechat-content pre code, .readonly-content pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        /* WeChat-specific code snippet styling */
+        .code-snippet__js {
+            background-color: #f5f5f5;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 0 0 16px 0;
+            font-family: 'Courier New', Consolas, Monaco, monospace;
+        }
+
+        .code-snippet__attr {
+            color: #d73a49; /* Red color for attributes like "https" */
+            font-weight: normal;
+        }
+
+        .code-snippet__comment {
+            color: #6a737d; /* Gray color for comments like "//github.com/slopus/happy" */
+            font-style: normal;
+        }
+
+        .code-snippet__fix {
+            position: relative;
+        }
+
+        .code-snippet__line-index {
+            display: none; /* Hide line numbers for cleaner display */
         }
 
         .loading {
@@ -372,8 +430,7 @@
                 readonlyContent.innerHTML = data.content;
                 editableContent.innerHTML = data.content;
 
-                // Apply WeChat-like styling
-                applyWeChatStyling(readonlyContent);
+                // Only apply minimal styling to the editable content, leave readonly as-is
                 applyWeChatStyling(editableContent);
 
                 console.log('Content loaded successfully');
@@ -400,6 +457,43 @@
             element.style.visibility = 'visible';
             element.style.opacity = '1';
             element.style.display = 'block';
+            
+            // Apply specific styles for blockquote elements
+            const blockquotes = element.querySelectorAll('blockquote');
+            blockquotes.forEach(blockquote => {
+                blockquote.style.margin = '0 0 16px 0';
+                blockquote.style.padding = '16px';
+                blockquote.style.borderLeft = '4px solid #07c160';
+                blockquote.style.backgroundColor = '#f9f9f9';
+                blockquote.style.color = '#666';
+            });
+            
+            // Apply specific styles for code elements
+            const codes = element.querySelectorAll('code');
+            codes.forEach(code => {
+                code.style.fontFamily = "'Courier New', Consolas, Monaco, monospace";
+                code.style.backgroundColor = '#f5f5f5';
+                code.style.padding = '2px 4px';
+                code.style.borderRadius = '3px';
+                code.style.fontSize = '15px';
+            });
+            
+            // Apply specific styles for pre elements
+            const pres = element.querySelectorAll('pre');
+            pres.forEach(pre => {
+                pre.style.backgroundColor = '#f5f5f5';
+                pre.style.padding = '12px';
+                pre.style.borderRadius = '4px';
+                pre.style.overflowX = 'auto';
+                pre.style.margin = '0 0 16px 0';
+            });
+            
+            // Apply specific styles for code elements inside pre elements
+            const preCodes = element.querySelectorAll('pre code');
+            preCodes.forEach(code => {
+                code.style.backgroundColor = 'transparent';
+                code.style.padding = '0';
+            });
             
             // Force visibility for all child elements that might be hidden
             const hiddenElements = element.querySelectorAll('[style*="visibility: hidden"], [style*="opacity: 0"], [style*="display: none"]');
