@@ -288,6 +288,108 @@
             display: none; /* Hide line numbers for cleaner display */
         }
 
+        /* Rich Text Editor Toolbar Styling */
+        .editor-toolbar {
+            border-top: 1px solid #e0e0e0;
+            padding: 8px 12px;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 4px;
+            padding-right: 8px;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .toolbar-btn {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            background-color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            color: #374151;
+            transition: all 0.2s;
+            min-width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toolbar-btn:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .toolbar-btn:active {
+            background-color: #e5e7eb;
+            transform: translateY(1px);
+        }
+
+        .toolbar-btn strong, .toolbar-btn em, .toolbar-btn u {
+            font-size: 14px;
+        }
+
+        /* Color Picker Styling */
+        .color-picker-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .color-picker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .color-btn {
+            position: relative;
+            overflow: visible;
+        }
+
+        .color-indicator {
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background-color: #333333;
+            border-radius: 1px;
+        }
+
+        #bgColorIndicator {
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+        }
+
+        /* Enhanced toolbar buttons for better UX */
+        .toolbar-btn:focus {
+            outline: 2px solid #07c160;
+            outline-offset: 1px;
+        }
+
+        .toolbar-btn.active {
+            background-color: #07c160;
+            color: white;
+            border-color: #06ad56;
+        }
+
         .loading {
             display: flex;
             justify-content: center;
@@ -365,6 +467,94 @@
                 <div class="pane-content">
                     <div id="editableContent" class="editable-content" contenteditable="true">
                         <p>Loaded content will appear here and can be edited.</p>
+                    </div>
+                </div>
+                <div class="editor-toolbar">
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="formatText('bold')" title="Bold">
+                            <strong>B</strong>
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('italic')" title="Italic">
+                            <em>I</em>
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('underline')" title="Underline">
+                            <u>U</u>
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="formatText('insertUnorderedList')" title="Bullet List">
+                            • List
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('insertOrderedList')" title="Numbered List">
+                            1. List
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="formatText('formatBlock', 'h1')" title="Heading 1">
+                            H1
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('formatBlock', 'h2')" title="Heading 2">
+                            H2
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('formatBlock', 'h3')" title="Heading 3">
+                            H3
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('formatBlock', 'p')" title="Paragraph">
+                            P
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="insertQuote()" title="Insert Quote">
+                            "Quote"
+                        </button>
+                        <button class="toolbar-btn" onclick="insertCode()" title="Insert Code">
+                            &lt;/&gt;
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="formatText('justifyLeft')" title="Align Left">
+                            ←
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('justifyCenter')" title="Align Center">
+                            ↔
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('justifyRight')" title="Align Right">
+                            →
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('justifyFull')" title="Justify">
+                            ↔
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="textColorPicker" class="color-picker" value="#333333" title="Text Color">
+                            <button class="toolbar-btn color-btn" onclick="applyTextColor()" title="Apply Text Color">
+                                A<span class="color-indicator" id="textColorIndicator"></span>
+                            </button>
+                        </div>
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="bgColorPicker" class="color-picker" value="#ffffff" title="Background Color">
+                            <button class="toolbar-btn color-btn" onclick="applyBackgroundColor()" title="Apply Background Color">
+                                ■<span class="color-indicator" id="bgColorIndicator"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="insertImage()" title="Insert Image">
+                            🖼️ IMG
+                        </button>
+                        <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                        <button class="toolbar-btn" onclick="insertLink()" title="Insert Link">
+                            🔗 Link
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="formatText('undo')" title="Undo">
+                            ↶
+                        </button>
+                        <button class="toolbar-btn" onclick="formatText('redo')" title="Redo">
+                            ↷
+                        </button>
                     </div>
                 </div>
             </div>
@@ -781,6 +971,244 @@
                 alert("微信凭据已清除");
             }
         }
+
+        // Rich Text Editor Functions
+        function formatText(command, value = null) {
+            // Focus on the editable content first
+            editableContent.focus();
+            
+            // Execute the formatting command
+            document.execCommand(command, false, value);
+            
+            // Keep focus on the content
+            editableContent.focus();
+        }
+
+        function insertQuote() {
+            editableContent.focus();
+            
+            // Get the current selection
+            const selection = window.getSelection();
+            const selectedText = selection.toString();
+            
+            if (selectedText) {
+                // If text is selected, wrap it in a blockquote
+                document.execCommand('formatBlock', false, 'blockquote');
+            } else {
+                // If no text is selected, insert a new blockquote
+                const blockquote = document.createElement('blockquote');
+                blockquote.innerHTML = '<p>Enter your quote here...</p>';
+                
+                // Insert at cursor position
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(blockquote);
+                    
+                    // Move cursor inside the blockquote
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(blockquote.firstChild);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                }
+            }
+            
+            // Apply WeChat styling to the new blockquote
+            applyWeChatStyling(editableContent);
+            editableContent.focus();
+        }
+
+        function insertCode() {
+            editableContent.focus();
+            
+            // Get the current selection
+            const selection = window.getSelection();
+            const selectedText = selection.toString();
+            
+            if (selectedText) {
+                // If text is selected, wrap it in a code element
+                const code = document.createElement('code');
+                code.textContent = selectedText;
+                
+                // Replace the selected text with the code element
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(code);
+                }
+            } else {
+                // If no text is selected, insert a code block
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.textContent = 'Enter your code here...';
+                pre.appendChild(code);
+                
+                // Insert at cursor position
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(pre);
+                    
+                    // Move cursor inside the code block
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(code);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                }
+            }
+            
+            // Apply WeChat styling to the new code elements
+            applyWeChatStyling(editableContent);
+            editableContent.focus();
+        }
+
+        // Update the existing applyWeChatStyling function to handle new elements
+        function updateToolbarState() {
+            // This function could be enhanced to show active states of toolbar buttons
+            // based on current cursor position and formatting
+        }
+
+        // Add event listener to update toolbar state when selection changes
+        document.addEventListener('selectionchange', updateToolbarState);
+
+        // Color Functions
+        function applyTextColor() {
+            const color = document.getElementById('textColorPicker').value;
+            editableContent.focus();
+            document.execCommand('foreColor', false, color);
+            
+            // Update color indicator
+            document.getElementById('textColorIndicator').style.backgroundColor = color;
+            editableContent.focus();
+        }
+
+        function applyBackgroundColor() {
+            const color = document.getElementById('bgColorPicker').value;
+            editableContent.focus();
+            document.execCommand('hiliteColor', false, color);
+            
+            // Update color indicator
+            document.getElementById('bgColorIndicator').style.backgroundColor = color;
+            editableContent.focus();
+        }
+
+        // Image Functions
+        function insertImage() {
+            // Trigger file input
+            document.getElementById('imageInput').click();
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Check if it's an image
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+
+            // Create FileReader to read the image
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imgSrc = e.target.result;
+                insertImageAtCursor(imgSrc, file.name);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function insertImageAtCursor(src, altText = 'Image') {
+            editableContent.focus();
+            
+            // Create image element
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = altText;
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.display = 'block';
+            img.style.margin = '16px auto';
+            
+            // Insert at cursor position
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(img);
+                
+                // Move cursor after the image
+                range.setStartAfter(img);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+            
+            editableContent.focus();
+        }
+
+        // Link Functions
+        function insertLink() {
+            editableContent.focus();
+            
+            const selection = window.getSelection();
+            const selectedText = selection.toString();
+            
+            let url = prompt('Enter the URL:', 'https://');
+            if (!url) return;
+            
+            // Validate URL
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            
+            if (selectedText) {
+                // If text is selected, create link with selected text
+                document.execCommand('createLink', false, url);
+            } else {
+                // If no text selected, prompt for link text
+                const linkText = prompt('Enter the link text:', url);
+                if (!linkText) return;
+                
+                // Create link element
+                const link = document.createElement('a');
+                link.href = url;
+                link.textContent = linkText;
+                link.target = '_blank'; // Open in new tab
+                link.style.color = '#07c160';
+                link.style.textDecoration = 'underline';
+                
+                // Insert at cursor position
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(link);
+                    
+                    // Move cursor after the link
+                    range.setStartAfter(link);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }
+            
+            editableContent.focus();
+        }
+
+        // Initialize color indicators
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial color indicators
+            document.getElementById('textColorIndicator').style.backgroundColor = '#333333';
+            document.getElementById('bgColorIndicator').style.backgroundColor = '#ffffff';
+            
+            // Add event listeners for color pickers
+            document.getElementById('textColorPicker').addEventListener('change', function() {
+                document.getElementById('textColorIndicator').style.backgroundColor = this.value;
+            });
+            
+            document.getElementById('bgColorPicker').addEventListener('change', function() {
+                document.getElementById('bgColorIndicator').style.backgroundColor = this.value;
+            });
+        });
 
         // Event listeners
         loadBtn.addEventListener('click', loadArticle);
