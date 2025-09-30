@@ -355,6 +355,7 @@
             height: 100%;
             opacity: 0;
             cursor: pointer;
+            z-index: 2;
         }
 
         .color-btn {
@@ -527,14 +528,14 @@
                     </div>
                     <div class="toolbar-group">
                         <div class="color-picker-wrapper">
-                            <input type="color" id="textColorPicker" class="color-picker" value="#333333" title="Text Color">
-                            <button class="toolbar-btn color-btn" onclick="applyTextColor()" title="Apply Text Color">
+                            <input type="color" id="textColorPicker" class="color-picker" value="#333333" title="Text Color" onchange="applyTextColor()">
+                            <button class="toolbar-btn color-btn" title="Text Color">
                                 A<span class="color-indicator" id="textColorIndicator"></span>
                             </button>
                         </div>
                         <div class="color-picker-wrapper">
-                            <input type="color" id="bgColorPicker" class="color-picker" value="#ffffff" title="Background Color">
-                            <button class="toolbar-btn color-btn" onclick="applyBackgroundColor()" title="Apply Background Color">
+                            <input type="color" id="bgColorPicker" class="color-picker" value="#ffffff" title="Background Color" onchange="applyBackgroundColor()">
+                            <button class="toolbar-btn color-btn" title="Background Color">
                                 ■<span class="color-indicator" id="bgColorIndicator"></span>
                             </button>
                         </div>
@@ -1199,15 +1200,6 @@
             // Set initial color indicators
             document.getElementById('textColorIndicator').style.backgroundColor = '#333333';
             document.getElementById('bgColorIndicator').style.backgroundColor = '#ffffff';
-            
-            // Add event listeners for color pickers
-            document.getElementById('textColorPicker').addEventListener('change', function() {
-                document.getElementById('textColorIndicator').style.backgroundColor = this.value;
-            });
-            
-            document.getElementById('bgColorPicker').addEventListener('change', function() {
-                document.getElementById('bgColorIndicator').style.backgroundColor = this.value;
-            });
         });
 
         // Event listeners
