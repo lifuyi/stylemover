@@ -83,23 +83,29 @@
             right: 110px; /* Position next to load button */
             top: 50%;
             transform: translateY(-50%);
-            background: none;
-            border: none;
-            font-size: 18px;
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            font-size: 14px;
             cursor: pointer;
-            color: #999;
-            padding: 0;
-            width: 20px;
-            height: 20px;
+            color: #666;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 50%;
+            border-radius: 4px; /* Apple-style rounded corners */
+            box-shadow: 0 1px 1px rgba(0,0,0,0.05); /* Subtle shadow */
         }
 
         .clear-url-btn:hover {
-            background-color: #f0f0f0;
-            color: #666;
+            background-color: #e0e0e0;
+            color: #333;
+            border-color: #ccc;
+        }
+
+        .clear-url-btn:active {
+            background-color: #d0d0d0;
+            transform: translateY(-50%); /* Maintain position on click */
         }
 
         .load-btn {
@@ -461,7 +467,6 @@
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h1>WeChat Article Style Converter</h1>
             <div class="header-actions">
-                <button class="action-btn reset-btn" id="resetBtn" style="margin-right: 10px;">Reset</button>
                 <button class="action-btn save-btn" id="saveBtn" style="margin-right: 10px;">Send to Wechat Draft Box</button>
                 <button class="action-btn export-btn" id="exportBtn" style="margin-right: 10px;">Copy to Clipboard</button>
                 <button class="action-btn reset-btn" id="clearCredsBtn" style="padding: 6px 10px; font-size: 12px;">Clear Credentials</button>
@@ -1237,7 +1242,6 @@
 
         // Event listeners
         loadBtn.addEventListener('click', loadArticle);
-        resetBtn.addEventListener('click', resetContent);
         saveBtn.addEventListener('click', saveChanges);
         exportBtn.addEventListener('click', exportHTML);
         document.getElementById('clearCredsBtn').addEventListener('click', clearCredentials);
