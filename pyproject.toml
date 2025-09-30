@@ -14,7 +14,7 @@ dependencies = [
 ]
 requires-python = ">=3.11"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 
 [project.scripts]
 start = "main:app"
@@ -22,6 +22,10 @@ start = "main:app"
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*", "static*"]
 
 [tool.uv]
 dev-dependencies = [

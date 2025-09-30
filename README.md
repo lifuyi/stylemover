@@ -30,7 +30,7 @@ This web application allows users to convert any HTML content to a WeChat articl
    ```bash
    uv venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   uv pip install -e .  # Install from project.toml
+   uv pip install -e .  # Install from pyproject.toml
    python main.py
    ```
    
