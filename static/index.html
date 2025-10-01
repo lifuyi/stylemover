@@ -446,11 +446,15 @@
 <body>
     <div class="header">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>WeChat Article Style Converter</h1>
+            <h1 id="title">WeChat Article Style Converter</h1>
             <div class="header-actions">
-                <button class="action-btn save-btn" id="saveBtn" style="margin-right: 10px;">Send to Wechat Draft Box</button>
+                <button class="action-btn save-btn" id="saveBtn" style="margin-right: 10px;">Send to WeChat Draft</button>
                 <button class="action-btn export-btn" id="exportBtn" style="margin-right: 10px;">Copy to Clipboard</button>
                 <button class="action-btn reset-btn" id="clearCredsBtn" style="padding: 6px 10px; font-size: 12px;">Clear Credentials</button>
+                <select id="languageSelector" class="action-btn reset-btn" style="padding: 6px 10px; font-size: 12px; margin-left: 10px;">
+                    <option value="en">English</option>
+                    <option value="zh">中文</option>
+                </select>
             </div>
         </div>
     </div>
@@ -464,7 +468,7 @@
         <div class="panes-container">
             <div class="pane">
                 <div class="pane-header">
-                    <span>Original Article (Read-only)</span>
+                    <span id="originalArticle">Original Article (Read-only)</span>
                 </div>
                 <div class="pane-content">
                     <div id="readonlyContent" class="readonly-content">
@@ -475,7 +479,7 @@
 
             <div class="pane">
                 <div class="pane-header">
-                    <span>Editable Content</span>
+                    <span id="editableContentHeader">Editable Content</span>
                 </div>
                 <div class="pane-content">
                     <div id="editableContent" class="editable-content" contenteditable="true">
@@ -579,6 +583,70 @@
         // API base URL
         const API_BASE = 'http://localhost:5003';
 
+        // Localization variables
+        let currentLanguage = 'en';
+        let translations = {};
+
+        // Load translations from config file
+        async function loadTranslations() {
+            try {
+                const response = await fetch(`${API_BASE}/config`);
+                const config = await response.json();
+                translations = config.translations;
+                
+                // Check for saved language preference first, then config default
+                const savedLanguage = localStorage.getItem('preferred_language');
+                currentLanguage = savedLanguage || config.language;
+                
+                // Set language selector
+                languageSelector.value = currentLanguage;
+                
+                // Apply translations
+                applyTranslations();
+            } catch (error) {
+                console.error('Error loading translations:', error);
+                // Fallback to English if config loading fails
+                currentLanguage = 'en';
+                languageSelector.value = currentLanguage;
+            }
+        }
+
+        // Apply translations to UI elements
+        function applyTranslations() {
+            document.getElementById('title').textContent = translations[currentLanguage].title;
+            document.getElementById('originalArticle').textContent = translations[currentLanguage].originalArticle;
+            document.getElementById('editableContentHeader').textContent = translations[currentLanguage].editableContent;
+            loadBtn.textContent = translations[currentLanguage].loadArticle;
+            saveBtn.textContent = translations[currentLanguage].sendToWechat;
+            exportBtn.textContent = translations[currentLanguage].copyToClipboard;
+            document.getElementById('clearCredsBtn').textContent = translations[currentLanguage].clearCredentials;
+            urlInput.placeholder = translations[currentLanguage].enterUrl;
+            
+            // Update document language attribute
+            document.documentElement.lang = currentLanguage === 'zh' ? 'zh-CN' : 'en';
+            
+            // Update placeholder content if no article is loaded
+            if (!originalContent) {
+                const initialReadonlyContent = '<p>' + translations[currentLanguage].initialReadonlyText + '</p>';
+                const initialEditableContent = '<p>' + translations[currentLanguage].initialEditableText + '</p>';
+                
+                if (readonlyContent.innerHTML.includes('Enter a WeChat') || readonlyContent.innerHTML.includes('在上面输入微信')) {
+                    readonlyContent.innerHTML = initialReadonlyContent;
+                }
+                if (editableContent.innerHTML.includes('Loaded content will') || editableContent.innerHTML.includes('加载的内容将')) {
+                    editableContent.innerHTML = initialEditableContent;
+                }
+            }
+        }
+
+        // Change language
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+            // Save language preference to localStorage
+            localStorage.setItem('preferred_language', lang);
+            applyTranslations();
+        }
+
         // DOM elements
         const urlInput = document.getElementById('urlInput');
         const loadBtn = document.getElementById('loadBtn');
@@ -587,6 +655,7 @@
         const resetBtn = document.getElementById('resetBtn');
         const saveBtn = document.getElementById('saveBtn');
         const exportBtn = document.getElementById('exportBtn');
+        const languageSelector = document.getElementById('languageSelector');
 
         // Current content storage
         let originalContent = '';
@@ -597,13 +666,13 @@
             const url = urlInput.value.trim();
             
             if (!url) {
-                alert('Please enter a URL');
+                alert(translations[currentLanguage].enterUrl);
                 return;
             }
 
             // Show loading state
-            readonlyContent.innerHTML = '<div class="loading">Loading...</div>';
-            editableContent.innerHTML = '<div class="loading">Loading...</div>';
+            readonlyContent.innerHTML = '<div class="loading">' + translations[currentLanguage].loading + '</div>';
+            editableContent.innerHTML = '<div class="loading">' + translations[currentLanguage].loading + '</div>';
 
             try {
                 const response = await fetch(`${API_BASE}/fetch-content`, {
@@ -642,7 +711,7 @@
                 console.log('Content preview:', data.content.substring(0, 200));
             } catch (error) {
                 console.error('Error loading article:', error);
-                const errorMessage = `<p style="color: red; padding: 20px;">Error loading article: ${error.message}</p>`;
+                const errorMessage = '<p style="color: red; padding: 20px;">' + translations[currentLanguage].errorLoading + ' ' + error.message + '</p>';
                 readonlyContent.innerHTML = errorMessage;
                 editableContent.innerHTML = errorMessage;
             }
@@ -719,7 +788,7 @@
         // Send to WeChat Draft Box
         async function saveChanges() {
             const editedContent = editableContent.innerHTML;
-            const title = currentTitle || 'WeChat Article';
+            const title = currentTitle || translations[currentLanguage].title;
             
             // Step 1: Get credentials
             // Try to get saved credentials from localStorage
@@ -728,20 +797,20 @@
             
             // If no saved credentials, prompt user for appid and secret
             if (!appid || !secret) {
-                appid = prompt("【步骤1/3】请输入微信appid:");
+                appid = prompt(translations[currentLanguage].enterAppId);
                 if (!appid) {
-                    alert("需要appid才能发送到微信草稿箱");
+                    alert(translations[currentLanguage].needAppId);
                     return;
                 }
                 
-                secret = prompt("【步骤2/3】请输入微信secret:");
+                secret = prompt(translations[currentLanguage].enterSecret);
                 if (!secret) {
-                    alert("需要secret才能发送到微信草稿箱");
+                    alert(translations[currentLanguage].needSecret);
                     return;
                 }
                 
                 // Ask user if they want to save credentials
-                if (confirm("是否保存凭据以便下次使用?")) {
+                if (confirm(translations[currentLanguage].saveCreds)) {
                     localStorage.setItem('wechat_appid', appid);
                     localStorage.setItem('wechat_secret', secret);
                 }
@@ -750,16 +819,16 @@
             // Step 2: Get thumbnail media ID (compulsory)
             let thumbMediaId = "";
             do {
-                const userThumbMediaId = prompt("【步骤3/3】请输入封面图片media_id (必填):", "");
+                const userThumbMediaId = prompt(translations[currentLanguage].enterThumbMediaId, "");
                 if (userThumbMediaId === null) {
                     // User cancelled the prompt
-                    if (!confirm("确定要取消发送到微信草稿箱吗?")) {
+                    if (!confirm(translations[currentLanguage].cancelSend)) {
                         continue; // Ask again
                     } else {
                         return; // Exit the function
                     }
                 } else if (userThumbMediaId.trim() === "") {
-                    alert("封面图片media_id不能为空，请重新输入!");
+                    alert(translations[currentLanguage].mediaIdRequired);
                     continue; // Ask again
                 } else {
                     thumbMediaId = userThumbMediaId.trim();
@@ -829,26 +898,26 @@
                 // Handle success responses
                 if (data.success !== undefined) {
                     // Our success response format
-                    alert('Content sent to WeChat draft box successfully!');
+                    alert(translations[currentLanguage].sendSuccess);
                 } else if (data.errcode !== undefined) {
                     // Check if it's a WeChat success response (errcode: 0)
                     if (data.errcode === 0) {
-                        alert('Content sent to WeChat draft box successfully!');
+                        alert(translations[currentLanguage].sendSuccess);
                     } else {
                         // This shouldn't happen for successful responses, but handle just in case
                         throw new Error(`WeChat API Error ${data.errcode}: ${data.errmsg}`);
                     }
                 } else {
                     // Assume it's a successful response if no error indicators
-                    alert('Content sent to WeChat draft box successfully!');
+                    alert(translations[currentLanguage].sendSuccess);
                 }
             } catch (error) {
                 console.error('Error sending to WeChat draft box:', error);
-                alert(`Error sending to WeChat draft box: ${error.message}`);
+                alert(translations[currentLanguage].sendError + ' ' + error.message);
                 
                 // Clear saved credentials if there's an authentication error
                 if (error.message.includes('appid') || error.message.includes('secret') || error.message.includes('access_token')) {
-                    if (confirm("凭据可能已失效，是否清除已保存的凭据?")) {
+                    if (confirm(translations[currentLanguage].clearCredsError)) {
                         localStorage.removeItem('wechat_appid');
                         localStorage.removeItem('wechat_secret');
                     }
@@ -859,7 +928,7 @@
         // Copy to Clipboard as Rich Text
         function exportHTML() {
             const editedContent = editableContent.innerHTML;
-            const title = currentTitle || 'WeChat Article';
+            const title = currentTitle || translations[currentLanguage].title;
             
             // Create a complete HTML document for clipboard
             const htmlContent = `
@@ -934,7 +1003,7 @@
                 
                 // Write to clipboard
                 navigator.clipboard.write([clipboardItem]).then(() => {
-                    alert('Content copied to clipboard as rich text!');
+                    alert(translations[currentLanguage].contentCopied);
                 }).catch(err => {
                     console.error('Failed to copy: ', err);
                     // Fallback to plain text copy
@@ -964,13 +1033,13 @@
             try {
                 const successful = document.execCommand('copy');
                 if (successful) {
-                    alert('Content copied to clipboard!');
+                    alert(translations[currentLanguage].contentCopied);
                 } else {
-                    alert('Failed to copy content to clipboard.');
+                    alert(translations[currentLanguage].copyFailed);
                 }
             } catch (err) {
                 console.error('Fallback: Oops, unable to copy', err);
-                alert('Failed to copy content to clipboard. Please try manually selecting and copying the content.');
+                alert(translations[currentLanguage].copyFailedManual);
             }
             
             document.body.removeChild(textArea);
@@ -978,10 +1047,10 @@
 
         // Clear saved WeChat credentials
         function clearCredentials() {
-            if (confirm("确定要清除保存的微信凭据吗?")) {
+            if (confirm(translations[currentLanguage].confirmClearCreds)) {
                 localStorage.removeItem('wechat_appid');
                 localStorage.removeItem('wechat_secret');
-                alert("微信凭据已清除");
+                alert(translations[currentLanguage].credsCleared);
             }
         }
 
@@ -1010,7 +1079,7 @@
             } else {
                 // If no text is selected, insert a new blockquote
                 const blockquote = document.createElement('blockquote');
-                blockquote.innerHTML = '<p>Enter your quote here...</p>';
+                blockquote.innerHTML = '<p>' + translations[currentLanguage].quotePlaceholder + '</p>';
                 
                 // Insert at cursor position
                 if (selection.rangeCount > 0) {
@@ -1053,7 +1122,7 @@
                 // If no text is selected, insert a code block
                 const pre = document.createElement('pre');
                 const code = document.createElement('code');
-                code.textContent = 'Enter your code here...';
+                code.textContent = translations[currentLanguage].codePlaceholder;
                 pre.appendChild(code);
                 
                 // Insert at cursor position
@@ -1117,7 +1186,7 @@
 
             // Check if it's an image
             if (!file.type.startsWith('image/')) {
-                alert('Please select a valid image file.');
+                alert(translations[currentLanguage].invalidImageFile);
                 return;
             }
 
@@ -1130,7 +1199,8 @@
             reader.readAsDataURL(file);
         }
 
-        function insertImageAtCursor(src, altText = 'Image') {
+        function insertImageAtCursor(src, altText = null) {
+            if (!altText) altText = translations[currentLanguage].imageAltText;
             editableContent.focus();
             
             // Create image element
@@ -1166,20 +1236,15 @@
             const selection = window.getSelection();
             const selectedText = selection.toString();
             
-            let url = prompt('Enter the URL:', 'https://');
+            const url = prompt(translations[currentLanguage].enterUrlPrompt, 'https://');
             if (!url) return;
-            
-            // Validate URL
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
-            }
             
             if (selectedText) {
                 // If text is selected, create link with selected text
                 document.execCommand('createLink', false, url);
             } else {
                 // If no text selected, prompt for link text
-                const linkText = prompt('Enter the link text:', url);
+                const linkText = prompt(translations[currentLanguage].enterLinkText, url);
                 if (!linkText) return;
                 
                 // Create link element
@@ -1219,6 +1284,16 @@
         saveBtn.addEventListener('click', saveChanges);
         exportBtn.addEventListener('click', exportHTML);
         document.getElementById('clearCredsBtn').addEventListener('click', clearCredentials);
+        
+        // Language selector event listener
+        languageSelector.addEventListener('change', function() {
+            changeLanguage(this.value);
+        });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTranslations();
+        });
 
         // Allow Enter key to load article
         urlInput.addEventListener('keypress', (e) => {

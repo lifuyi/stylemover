@@ -29,6 +29,16 @@ app.add_middleware(
 # Serve static files (HTML, CSS, JS)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Serve config file
+@app.get("/config")
+async def get_config():
+    try:
+        with open("config.json", "r", encoding="utf-8") as f:
+            config = f.read()
+        return Response(content=config, media_type="application/json")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Config file not found")
+
 class URLRequest(BaseModel):
     url: str
 
